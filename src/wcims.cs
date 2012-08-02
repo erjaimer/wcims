@@ -145,7 +145,7 @@ public class Wcims
 		
 		if( args.Length < 1 || args.Length > 2 )
 		{
-			Console.WriteLine("Se esperaba al menos un argumento");
+			Console.WriteLine("expected 1 or 2 arguments, -h for more information");
 			return;
 		}
 		switch( args[0] )
@@ -157,7 +157,7 @@ public class Wcims
 					"Uso:\n\twcims option folder"
 					+"option:\n"
 					+"\t-h | --help help: show this help and exit\n"
-					+"\t-c | --check : save a file con path:md5 format\n"
+					+"\t-c | --check : save a file, format= path:md5 \n"
 					+"\t-s | --save : check a directory by file\n"
 				);
 			break;
@@ -165,7 +165,7 @@ public class Wcims
 			case "--save":
 				if( args.Length != 2 )
 				{
-					Console.WriteLine("Se esperaba un directorio");
+					Console.WriteLine("folder expected");
 					return;
 				}
 				Wcims s = new Wcims(args[1]);
@@ -176,14 +176,14 @@ public class Wcims
 			case "--check":
 				if( args.Length != 2 )
 				{
-					Console.WriteLine("Se esperaba un directorio");
+					Console.WriteLine("Folder expected");
 					return;
 				}
 				Wcims s2 = new Wcims(args[1]);
 				s2.checkDir();
 			break;
 			default:
-				Console.WriteLine("Error se esperaba -s --save -h --help  -c --check");
+				Console.WriteLine("Error expected arguments: -s | --save | -h | --help  | -c  | --check");
 			break;
 		}
 	
