@@ -21,7 +21,7 @@ public class Wcims
 	///@bug not check if is a directory.
 	///@bug _separator must depend to OS, in win32 is '\\' in Unix* are '/'.
 	///@bug find method of String class or Directory class for to select dirname.
-	public Clase5( String dir )
+	public Wcims( String dir )
 	{
 		_dir = dir;
 		string[] path = Regex.Split( dir , _dirSeparator); // separate path directory by _separator
@@ -143,10 +143,49 @@ public class Wcims
 	static public void Main (String[] args)
 	{
 		
-		Clase5 s = new Clase5(@"/home/jaime/Escritorio");
-		//s.proccessFolder(); 
-		//s.writeFile();
-		s.checkDir();
+		if( args.Length < 1 || args.Length > 2 )
+		{
+			Console.WriteLine("Se esperaba al menos un argumento");
+			return;
+		}
+		switch( args[0] )
+		{
+			case "-h":
+			case "--help":
+				Console.WriteLine
+				(
+					"Uso:\n\twcims option folder"
+					+"option:\n"
+					+"\t-h | --help help: show this help and exit\n"
+					+"\t-c | --check : save a file con path:md5 format\n"
+					+"\t-s | --save : check a directory by file\n"
+				);
+			break;
+			case "-s":
+			case "--save":
+				if( args.Length != 2 )
+				{
+					Console.WriteLine("Se esperaba un directorio");
+					return;
+				}
+				Wcims s = new Wcims(args[1]);
+				s.proccessFolder();
+				s.writeFile();
+			break;
+			case "-c":
+			case "--check":
+				if( args.Length != 2 )
+				{
+					Console.WriteLine("Se esperaba un directorio");
+					return;
+				}
+				Wcims s2 = new Wcims(args[1]);
+				s2.checkDir();
+			break;
+			default:
+				Console.WriteLine("Error se esperaba -s --save -h --help  -c --check");
+			break;
+		}
 	
 	}
 }
