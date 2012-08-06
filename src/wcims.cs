@@ -34,16 +34,25 @@ public class Wcims
 	///@bug not checked if exists or not have read permissed .
 	protected string GetMD5HashFromFile(string fileName)
 	{
-	  FileStream file = new FileStream(fileName, FileMode.Open);
-	  MD5 md5 = new MD5CryptoServiceProvider();
-	  byte[] retVal = md5.ComputeHash(file);
-	  file.Close();
-	  StringBuilder sb = new StringBuilder();
-	  for (int i = 0; i < retVal.Length; i++)
-	  {
-	    sb.Append(retVal[i].ToString("x2"));
-	  }
-	  return sb.ToString();
+		string ret = "";
+		try
+		{
+			FileStream file = new FileStream(fileName, FileMode.Open);
+			MD5 md5 = new MD5CryptoServiceProvider();
+			byte[] retVal = md5.ComputeHash(file);
+			file.Close();
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < retVal.Length; i++)
+			{
+				sb.Append(retVal[i].ToString("x2"));
+			}
+			ret = sb.ToString();
+		}
+		catch( System.UnauthorizedAccessException )
+		{
+			Console.WriteLine("Yout can't permissed:()\n");
+		}
+		return ret;
 	}
 
 	///@brief detect whether its a directory or file.
@@ -52,6 +61,7 @@ public class Wcims
 		FileAttributes attr = File.GetAttributes(path);
 		return ((attr & FileAttributes.Directory) == FileAttributes.Directory);
 	}
+	
 	
 	///@brief add in this._list all files, directories and subdirectories below of this._dir
 	///@call  proccessFolder(String)
@@ -65,9 +75,10 @@ public class Wcims
 	///@bug not check if path is a directory.
 	protected void proccessFolder(String directory)
 	{
-		String[] filePaths = Directory.	GetFileSystemEntries(directory);//find all directory,subdirectory and files to path
+		String[] filePaths = null;
 		try
 		{
+			filePaths = Directory.	GetFileSystemEntries(directory);//find all directory,subdirectory and files to path
 			foreach ( String path in filePaths )
 			{
 				_list.Add( path  );//add to list folder or file
@@ -77,22 +88,33 @@ public class Wcims
 		}
 		catch(System.IO.IOException)
 		{
-		    Console.WriteLine("exception:()");
+		    Console.WriteLine("exception:()\n");
+		}
+		catch( System.UnauthorizedAccessException )
+		{
+			Console.WriteLine("Yout can't permissed:()\n");
 		}
 	}
 	
 	///@brief Write _list in a file, it's file will written in this._dir path with name to dir.
 	///@bug not checked write permissed.
 	///@bug not checked if exists file with equal name.
-	public void writeFile()
+	public void writeFile(String fileOut = "")
 	{
+		if( fileOut != "" )
+		{
+			fileOutput = fileOut;
+		}
         TextWriter tw = new StreamWriter( fileOutput );
         Console.WriteLine("Writting file {0}",fileOutput);
         foreach( String path in _list ) // process array files and calculate md5
 		{
 			//Console.WriteLine("Writting file {0}",path);
 			String sha1 = ( ! isDirectory( path ))?GetMD5HashFromFile( path ):"d"; // if is a directory not calculate md5
-			tw.WriteLine("{0}{1}{2}",path,_separator,sha1); // write in file with separator
+			if( sha1 != "" )
+				tw.WriteLine("{0}{1}{2}",path,_separator,sha1); // write in file with separator
+			else 
+				tw.WriteLine("{0}{1}{2}",path,_separator,"error"); // write in file with separator
 		}
 		Console.WriteLine("Done!!");
         tw.Close();
@@ -101,25 +123,36 @@ public class Wcims
 	///@brief check if directory has been changed.
 	///@bug not checked if fileOutput if readable.
 	///@bug file separator in windows entry is \\r\\n
-	public bool checkDir()
+	public bool checkDir(String fileIn="")
 	{
+		if( fileIn != "")
+			fileOutput = fileIn;
 		if( !File.Exists( fileOutput ) )
 			return false;
 		ArrayList errors = new ArrayList();
 		TextReader tr = new StreamReader(fileOutput);
 		Console.WriteLine("Read {0} ... ",_dir);
 		string[] lines = Regex.Split( tr.ReadToEnd() , "\n"); //the entry file is separate by  \\n
+		proccessFolder(_dir);
 		foreach (string file in lines)
 		{
+		
 			Console.WriteLine("PROCESS:{0}", file);
 			String[] aux = Regex.Split( file , _separator); 
 			if( aux.Length != 2 ) // would be warning or failure!! but it's ignored
 				continue;
 			String filepath = aux[0]; // filepath
 			String md5 = aux[1];// md5 or d if is a directory
+			int index = _list.IndexOf(filepath ) ;
+			if( index!=-1)
+			{
+				_list.Remove(filepath);
+			}
 			//-----
 			//	process directory for to find errors or changes
 			//-----
+			if( md5 == "error")
+				continue;
 			if( md5 == "d" && !isDirectory( filepath ) )
 				errors.Add("\tDirectory " + filepath + " not exists" );
 			else if( md5 == "d" && !Directory.Exists( filepath )  ) 
@@ -127,7 +160,8 @@ public class Wcims
 			else if( md5 != "d" && !File.Exists( filepath)  )
 				errors.Add("\tFile " + filepath +  "not exists" );
 			else if( md5 != "d" && md5 != GetMD5HashFromFile( filepath ) )
-				errors.Add("\tFile " + filepath + " not has been changed, not hash equal" );				
+				errors.Add("\tFile " + filepath + " not has been changed, not hash equal" );
+						
 		}
 		Console.WriteLine("Done!!");
 		tr.Close();
@@ -138,12 +172,17 @@ public class Wcims
 		else
 			foreach( string error in errors) //show erros by stdout
 				Console.WriteLine("{0}",error);
+		Console.WriteLine("new files or dirs ( or not processed )!");
+		foreach( String st in _list )
+		{
+			Console.WriteLine("{0}",st);
+		}
 		return true;
 	}
 	static public void Main (String[] args)
 	{
 		
-		if( args.Length < 1 || args.Length > 2 )
+		if( args.Length < 1 || args.Length > 3 )
 		{
 			Console.WriteLine("expected 1 or 2 arguments, -h for more information");
 			return;
@@ -154,33 +193,33 @@ public class Wcims
 			case "--help":
 				Console.WriteLine
 				(
-					"Uso:\n\twcims option folder"
-					+"option:\n"
+					"Uso:\n\twcims -h | -s folder fileOutput | -c folder fileInput " 
+					+"\n"
 					+"\t-h | --help help: show this help and exit\n"
 					+"\t-c | --check : save a file, format= path:md5 \n"
 					+"\t-s | --save : check a directory by file\n"
 				);
 			break;
 			case "-s":
-			case "--save":
-				if( args.Length != 2 )
+			case "--save":// option + dir + file_output
+				if( args.Length != 3 )
 				{
-					Console.WriteLine("folder expected");
+					Console.WriteLine("error -h for more information");
 					return;
 				}
 				Wcims s = new Wcims(args[1]);
 				s.proccessFolder();
-				s.writeFile();
+				s.writeFile(args[2]);
 			break;
 			case "-c":
-			case "--check":
-				if( args.Length != 2 )
+			case "--check":// option + dir + file_input
+				if( args.Length != 3 )
 				{
 					Console.WriteLine("Folder expected");
 					return;
 				}
 				Wcims s2 = new Wcims(args[1]);
-				s2.checkDir();
+				s2.checkDir(args[2]);
 			break;
 			default:
 				Console.WriteLine("Error expected arguments: -s | --save | -h | --help  | -c  | --check");
